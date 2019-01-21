@@ -77,7 +77,7 @@ def warp_image_3d(src_img, src_points, dst_points, dst_shape, dtype=np.uint8):
 
 ## Generate Mask
 def mask_from_points(size, points):
-    radius = 10  # kernel size
+    radius = 10 # kernel size
     kernel = np.ones((radius, radius), np.uint8)
     mask = np.zeros(size, np.uint8)
     cv2.fillConvexPoly(mask, cv2.convexHull(points), 255)

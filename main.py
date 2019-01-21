@@ -2,20 +2,39 @@
 
 import os
 import cv2
+import dlib
 import argparse
 import numpy as np
 
-from face_detection import face_detection, face_points_detection
 from helpers import warp_image_3d, mask_from_points, apply_mask, correct_colours
 
-def get_faces(im, r=10):
+## Face detection
+def face_detection(img):
+    # Ask the detector to find the bounding boxes of each face.
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(img, 0)
+    return faces
+
+## Face and points detection
+def face_points_detection(img, bbox, model_path):
+    predictor = dlib.shape_predictor(model_path)
+    # Get the landmarks/parts for the face in box d.
+    shape = predictor(img, bbox)
+    # loop over the 68 facial landmarks and convert them
+    # to a 2-tuple of (x, y)-coordinates
+    coords = [(shape.part(i).x, shape.part(i).y) for i in range(68)]
+    # return the list of (x, y)-coordinates
+    return coords
+
+
+def get_faces(im, model_path, r=10):
     faces = face_detection(im)
 
     if len(faces) < 2:
         return []
 
     def get_face(face_nb):
-        points = np.asarray(face_points_detection(im, faces[face_nb]))
+        points = np.asarray(face_points_detection(im, faces[face_nb], model_path))
         im_w, im_h = im.shape[:2]
         left, top = np.min(points, 0)
         right, bottom = np.max(points, 0)
@@ -31,6 +50,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=app_name)
     parser.add_argument('--both', default=False, action='store_true', help='Swap both faces')
+    parser.add_argument('--model', help='Model Path')
     args = parser.parse_args()
 
     cap = cv2.VideoCapture(0)
@@ -38,14 +58,13 @@ if __name__ == '__main__':
     while(True):
         # Capture frame-by-frame
         ret, frame = cap.read()
-
         frame_nb = frame_nb + 1
         if frame_nb % 3 == 0:
             frame_nb = 0
             continue
 
         # Select src face
-        faces = get_faces(frame)
+        faces = get_faces(frame, args.model)
         if len(faces):
             first_face_points, first_face_shape, first_face = faces[0]
             second_face_points, second_face_shape, second_face = faces[1]
